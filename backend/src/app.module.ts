@@ -3,7 +3,6 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { UserModel, UserSchema } from './schemas/user';
 
 @Module({
   imports: [
@@ -12,7 +11,11 @@ import { UserModel, UserSchema } from './schemas/user';
     GraphQLModule.forRoot({
       autoSchemaFile: true,
     }),
-    MongooseModule.forRoot('mongodb://localhost/nest'),
+    MongooseModule.forRoot('mongodb://localhost:37017', {
+      useNewUrlParser: true,
+      useFindAndModify: false,
+      useCreateIndex: true,
+    }),
     // MongooseModule.forFeature([
     //   { name: UserModel.name, schema: UserSchema, collection: 'users' }
     // ])

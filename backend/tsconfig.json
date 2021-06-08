@@ -17,6 +17,12 @@
       ],
       "@app/models/*": [
         "libs/models/src/*"
+      ],
+      "@app/password": [
+        "libs/password/src"
+      ],
+      "@app/password/*": [
+        "libs/password/src/*"
       ]
     }
   }

@@ -28,7 +28,10 @@
     "@nestjs/mongoose": "^7.2.4",
     "@nestjs/passport": "^7.1.5",
     "@nestjs/platform-express": "^7.0.0",
+    "@types/bcrypt": "^5.0.0",
     "apollo-server-express": "^2.25.0",
+    "bcrypt": "^5.0.1",
+    "bcryptjs": "^2.4.3",
     "graphql": "^15.5.0",
     "graphql-tools": "^7.0.5",
     "mongoose": "^5.12.13",
@@ -80,7 +83,9 @@
     ],
     "moduleNameMapper": {
       "@app/models/(.*)": "<rootDir>/libs/models/src/$1",
-      "@app/models": "<rootDir>/libs/models/src"
+      "@app/models": "<rootDir>/libs/models/src",
+      "@app/password/(.*)": "<rootDir>/libs/password/src/$1",
+      "@app/password": "<rootDir>/libs/password/src"
     }
   }
 }

@@ -7,6 +7,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './constants';
 import { UserService } from '../user/user.service';
+import { UserModel, UserSchema } from '../user/user.schema';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -16,8 +18,12 @@ import { UserService } from '../user/user.service';
       secret: jwtConstants.secret,
       signOptions: { expiresIn: '24h' },
     }),
+    // Sigh - This in an unfortunate inclusion
+    MongooseModule.forFeature([
+      { name: UserModel.name, schema: UserSchema, collection: 'users' }
+    ])
   ],
-  providers: [AuthService, LocalStrategy, UserService, JwtStrategy],
+  providers: [AuthService, LocalStrategy, UserService, JwtStrategy, UserModel],
   exports: [AuthService],
 })
 export class AuthModule {}

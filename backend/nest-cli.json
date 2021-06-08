@@ -1,4 +1,18 @@
 {
   "collection": "@nestjs/schematics",
-  "sourceRoot": "src"
+  "sourceRoot": "src",
+  "projects": {
+    "password": {
+      "type": "library",
+      "root": "libs/password",
+      "entryFile": "index",
+      "sourceRoot": "libs/password/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/password/tsconfig.lib.json"
+      }
+    }
+  },
+  "compilerOptions": {
+    "webpack": true
+  }
 }

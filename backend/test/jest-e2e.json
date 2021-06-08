@@ -12,6 +12,8 @@
   },
   "moduleNameMapper": {
     "@app/models/(.*)": "<rootDir>/../libs/models/src/$1",
-    "@app/models": "<rootDir>/../libs/models/src"
+    "@app/models": "<rootDir>/../libs/models/src",
+    "@app/password/(.*)": "<rootDir>/../libs/password/src/$1",
+    "@app/password": "<rootDir>/../libs/password/src"
   }
 }

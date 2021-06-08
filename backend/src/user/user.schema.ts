@@ -5,14 +5,14 @@ export type UserDocument = UserModel & Document;
 
 @Schema()
 export class UserModel {
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true })
   email: string;
 
   @Prop({ required: true })
   username: string;
 
   @Prop({ required: true })
-  passwordHash: number;
+  passwordHash: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserModel);

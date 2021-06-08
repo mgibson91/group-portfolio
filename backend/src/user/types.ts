@@ -1,12 +1,13 @@
 export class CreateUserDto {
   email: string;
   username: string;
-  passwordHash: string;
+  password: string;
 }
 
-// Public
+// Internal
 export class User {
   id: string;
   email: string;
   username: string;
+  passwordHash: string;
 }

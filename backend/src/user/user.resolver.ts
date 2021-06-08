@@ -17,7 +17,7 @@ export class Session {
 @InputType()
 export class InputLoginCredentials {
   @Field(() => GraphQLString)
-  username: string;
+  email: string;
 
   @Field(() => GraphQLString)
   password: string;
@@ -26,10 +26,13 @@ export class InputLoginCredentials {
 @InputType()
 export class InputRegister {
   @Field(() => GraphQLString)
+  email: string;
+
+  @Field(() => GraphQLString)
   username: string;
 
   @Field(() => GraphQLString)
-  email: string;
+  password: string;
 }
 
 @Resolver()
@@ -45,9 +48,12 @@ export class UserResolver {
   @Mutation(() => Session)
   // @UseGuards(GqlLocalAuthGuard)
   async createUser(@Args("params") params: InputRegister) {
-    const passwordHash = 'blabla';
-    const created = await this.userService.create({ ...params, passwordHash });
-    console.log(created);
+    await this.userService.create(params);
+    return this.authService.login({
+      email: params.email,
+      password: params.password,
+    });
+
 
     return { access_token: '#' };
   }
