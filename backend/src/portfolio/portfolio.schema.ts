@@ -12,8 +12,8 @@ export class PortfolioModel {
   @Prop()
   description?: string;
 
-  @Prop({ required: true })
-  subscribedUsers: UserModel;
+  @Prop({ required: true, default: () => [] })
+  subscribedUsers: [UserModel];
 }
 
 export const PortfolioSchema = SchemaFactory.createForClass(PortfolioModel);

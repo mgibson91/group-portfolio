@@ -1,6 +1,10 @@
 import { Args, Field, InputType, Mutation, ObjectType, Query, Resolver } from '@nestjs/graphql';
 import { PortfolioService } from './portfolio.service';
 import { GraphQLFloat, GraphQLString } from 'graphql';
+import { User } from '../user/types';
+import { UseGuards } from '@nestjs/common';
+import { GqlAuthGuard } from '../auth/auth-guard-jwt-gql';
+import { CurrentGqlUser } from '../auth/current-gql-user.decorator';
 
 @ObjectType()
 export class PortfolioDescription {
@@ -21,6 +25,15 @@ export class InputCreatePortfolio {
 
   @Field(() => GraphQLString, { nullable: true })
   description: string;
+}
+
+@InputType()
+export class InputAddUserToPortfolio {
+  @Field(() => GraphQLString)
+  userId: string;
+
+  @Field(() => GraphQLString)
+  portfolioId: string;
 }
 
 @ObjectType()
@@ -57,8 +70,27 @@ export class PortfolioResolver {
   constructor(private portfolioService: PortfolioService) {}
 
   @Mutation(returns => PortfolioDescription)
-  createPortfolio(@Args('params') params: InputCreatePortfolio) {
-    // this.portfolioService.createPortfolio(params)
+  @UseGuards(GqlAuthGuard)
+  async createPortfolio(@Args('params') params: InputCreatePortfolio, @CurrentGqlUser() user: User) {
+    const portfolio = await this.portfolioService.createPortfolio(params)
+
+    return {
+      id: portfolio.id,
+      name: portfolio.name,
+      description: portfolio.description,
+    }
+  }
+
+  @Mutation(returns => Boolean!, { nullable: true })
+  @UseGuards(GqlAuthGuard)
+  async addUserToPortfolio(@Args('params') params: InputAddUserToPortfolio, @CurrentGqlUser() user: User) {
+    const portfolio = await this.portfolioService.addUserToPortfolio(params)
+
+    return {
+      id: portfolio.id,
+      name: portfolio.name,
+      description: portfolio.description,
+    }
   }
 
   @Query(returns => [PortfolioDescription])

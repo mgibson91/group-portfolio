@@ -1,9 +1,37 @@
 import { Injectable } from '@nestjs/common';
-import { PortfolioAdjustment, PortfolioStake } from './portfolio.resolver';
+import {
+  InputAddUserToPortfolio,
+  InputCreatePortfolio,
+  PortfolioAdjustment,
+  PortfolioStake,
+} from './portfolio.resolver';
+import { InjectModel } from '@nestjs/mongoose';
+import { UserDocument, UserModel } from '../user/user.schema';
+import { Model } from 'mongoose';
+import { PortfolioDocument, PortfolioModel } from './portfolio.schema';
+import { hashPassword } from '../common/password-utils';
 
 @Injectable()
 export class PortfolioService {
   private breakdown: Record<string, number> = {};
+
+  constructor(@InjectModel(PortfolioModel.name) private portfolioModel: Model<PortfolioDocument>) {}
+
+  public createPortfolio(params: InputCreatePortfolio): Promise<PortfolioDocument> {
+    const created = new this.portfolioModel(params);
+    return created.save();
+  }
+
+  public addUserToPortfolio(params: InputAddUserToPortfolio): Promise<PortfolioDocument> {
+    // Get user
+    // Get portfolio
+    // Ensure user owns portfolio
+
+    // In transaction, add userId to
+    // TODO
+    const created = new this.portfolioModel(params);
+    return created.save();
+  }
 
   public adjustPortfolio(update: PortfolioAdjustment) {
     const stakeholderExists = Object.prototype.hasOwnProperty.call(this.breakdown, update.stakeholder);
