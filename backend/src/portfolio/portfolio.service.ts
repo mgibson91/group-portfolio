@@ -1,36 +1,50 @@
 import { Injectable } from '@nestjs/common';
 import {
-  InputAddUserToPortfolio,
+  InputAddSubscriberToPortfolio,
   InputCreatePortfolio,
   PortfolioAdjustment,
   PortfolioStake,
 } from './portfolio.resolver';
 import { InjectModel } from '@nestjs/mongoose';
-import { UserDocument, UserModel } from '../user/user.schema';
 import { Model } from 'mongoose';
 import { PortfolioDocument, PortfolioModel } from './portfolio.schema';
-import { hashPassword } from '../common/password-utils';
+import { PortfolioSubscribersDocument, PortfolioSubscribersModel } from './portfolio-subscribers.schema';
+import { CurrentGqlUser } from '../auth/current-gql-user.decorator';
+import { User } from '../user/types';
+import { UserDocument, UserModel } from '../user/user.schema';
 
 @Injectable()
 export class PortfolioService {
   private breakdown: Record<string, number> = {};
 
-  constructor(@InjectModel(PortfolioModel.name) private portfolioModel: Model<PortfolioDocument>) {}
+  constructor(
+    @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
+    @InjectModel(PortfolioModel.name) private portfolioModel: Model<PortfolioDocument>,
+    @InjectModel(PortfolioSubscribersModel.name) private portfolioSubscribersModel: Model<PortfolioSubscribersDocument>,
+  ) {}
 
-  public createPortfolio(params: InputCreatePortfolio): Promise<PortfolioDocument> {
-    const created = new this.portfolioModel(params);
+  public async createPortfolio(params: InputCreatePortfolio, requestingUser: User): Promise<PortfolioDocument> {
+    const created = new this.portfolioModel({ ...params, createdBy: requestingUser.id });
     return created.save();
   }
 
-  public addUserToPortfolio(params: InputAddUserToPortfolio): Promise<PortfolioDocument> {
-    // Get user
-    // Get portfolio
-    // Ensure user owns portfolio
+  public async addSubscriberToPortfolio(params: InputAddSubscriberToPortfolio, requestingUser: User): Promise<void> {
+    const portfolio = await this.portfolioModel.findOne({ _id: params.portfolioId }).lean();
+    if (!portfolio) {
+      throw new Error('Portfolio does not exist');
+    }
 
-    // In transaction, add userId to
-    // TODO
-    const created = new this.portfolioModel(params);
-    return created.save();
+    if (portfolio?.createdBy !== requestingUser.id) {
+      throw new Error('Portfolio can only be updated by the user who created it')
+    }
+
+    const user = await this.userModel.findOne({ _id: params.userId }).lean();
+    if (!user) {
+      throw new Error('User does not exist');
+    }
+
+    const subscription = new this.portfolioSubscribersModel(params);
+    await subscription.save();
   }
 
   public adjustPortfolio(update: PortfolioAdjustment) {

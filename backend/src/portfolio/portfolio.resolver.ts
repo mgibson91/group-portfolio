@@ -28,7 +28,7 @@ export class InputCreatePortfolio {
 }
 
 @InputType()
-export class InputAddUserToPortfolio {
+export class InputAddSubscriberToPortfolio {
   @Field(() => GraphQLString)
   userId: string;
 
@@ -72,7 +72,7 @@ export class PortfolioResolver {
   @Mutation(returns => PortfolioDescription)
   @UseGuards(GqlAuthGuard)
   async createPortfolio(@Args('params') params: InputCreatePortfolio, @CurrentGqlUser() user: User) {
-    const portfolio = await this.portfolioService.createPortfolio(params)
+    const portfolio = await this.portfolioService.createPortfolio(params, user)
 
     return {
       id: portfolio.id,
@@ -83,14 +83,8 @@ export class PortfolioResolver {
 
   @Mutation(returns => Boolean!, { nullable: true })
   @UseGuards(GqlAuthGuard)
-  async addUserToPortfolio(@Args('params') params: InputAddUserToPortfolio, @CurrentGqlUser() user: User) {
-    const portfolio = await this.portfolioService.addUserToPortfolio(params)
-
-    return {
-      id: portfolio.id,
-      name: portfolio.name,
-      description: portfolio.description,
-    }
+  async addSubscriberToPortfolio(@Args('params') params: InputAddSubscriberToPortfolio, @CurrentGqlUser() user: User) {
+    await this.portfolioService.addSubscriberToPortfolio(params, user)
   }
 
   @Query(returns => [PortfolioDescription])
