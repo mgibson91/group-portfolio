@@ -5,6 +5,7 @@ import { User } from '../user/types';
 import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../auth/auth-guard-jwt-gql';
 import { CurrentGqlUser } from '../auth/current-gql-user.decorator';
+import { CorrelationId } from '../common/correlation-id.decorator';
 
 @ObjectType()
 export class PortfolioDescription {
@@ -47,11 +48,11 @@ export class PortfolioStake {
 
 @InputType()
 export class PortfolioAdjustment {
+  @Field(() => GraphQLString)
+  portfolioId: string;
+
   @Field(() => GraphQLString, { description: 'User whose stake is being adjusted' })
   userId: string;
-
-  @Field(() => GraphQLString)
-  stakeholder: string;
 
   @Field(() => GraphQLFloat)
   currentPortfolioValue: number;
@@ -98,8 +99,10 @@ export class PortfolioResolver {
   }
 
   @Mutation(returns => [PortfolioStake], { description: Descriptions.adjustPortfolio })
-  adjustPortfolio(@Args('params') params: PortfolioAdjustment) {
-    return this.portfolioService.adjustPortfolio(params);
+  @UseGuards(GqlAuthGuard)
+  adjustPortfolio(@Args('params') params: PortfolioAdjustment, @CurrentGqlUser() user: User, @CorrelationId() correlationId) {
+    console.info({ correlationId, user }, 'adjustPortfolio')
+    return this.portfolioService.adjustPortfolio(params, user);
   }
 
   @Query(returns => [PortfolioStake])

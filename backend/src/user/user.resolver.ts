@@ -1,9 +1,10 @@
 import { Args, Field, InputType, Mutation, ObjectType, Resolver } from '@nestjs/graphql';
-import { GqlLocalAuthGuard } from 'src/auth/auth-guard-local-gql';
+import { GqlLocalAuthGuard } from './../auth/auth-guard-local-gql';
 import { UseGuards } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { GraphQLString } from 'graphql';
 import { UserService } from './user.service';
+import { CorrelationId } from '../common/correlation-id.decorator';
 
 @ObjectType()
 export class Session {
@@ -38,7 +39,8 @@ export class UserResolver {
 
   @Mutation(() => Session)
   @UseGuards(GqlLocalAuthGuard)
-  async login(@Args("credentials") credentials: InputLoginCredentials) {
+  async login(@Args("credentials") credentials: InputLoginCredentials, @CorrelationId() correlationId: string) {
+    console.log(correlationId)
     return this.authService.login(credentials);
   }
 

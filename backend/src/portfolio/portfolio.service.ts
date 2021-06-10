@@ -13,6 +13,10 @@ import { CurrentGqlUser } from '../auth/current-gql-user.decorator';
 import { User } from '../user/types';
 import { UserDocument, UserModel } from '../user/user.schema';
 
+function getPortfolioBreakdown(breakdown: Record<string, number>): PortfolioStake[] {
+  return Object.entries(breakdown).map(([stakeholder, fraction]) => ({ stakeholder, percentage: fraction * 100 }));
+}
+
 @Injectable()
 export class PortfolioService {
   private breakdown: Record<string, number> = {};
@@ -47,42 +51,58 @@ export class PortfolioService {
     await subscription.save();
   }
 
-  public adjustPortfolio(update: PortfolioAdjustment) {
-    const stakeholderExists = Object.prototype.hasOwnProperty.call(this.breakdown, update.stakeholder);
+  public async adjustPortfolio(params: PortfolioAdjustment, requestingUser: User) {
+    const portfolio = await this.portfolioModel.findOne({ _id: params.portfolioId }).lean();
+    if (!portfolio) {
+      throw new Error('Portfolio does not exist');
+    }
 
+    if (portfolio?.createdBy !== requestingUser.id) {
+      throw new Error('Portfolio can only be updated by the user who created it')
+    }
+
+    const stakeholderExists = Object.prototype.hasOwnProperty.call(portfolio.breakdown, params.userId);
     if (!stakeholderExists) {
-      if (update.cashUpdate < 0) {
-        throw new Error(`Investment stakeholder ${update.stakeholder} does not exist. Unable to reduce stake`);
+      if (params.cashUpdate < 0) {
+        throw new Error(`Investment stakeholder ${params.userId} does not exist. Unable to reduce stake`);
       }
 
       // Otherwise, add new stakeholder
-      this.breakdown[update.stakeholder] = 0;
+      portfolio.breakdown[params.userId] = 0;
     }
 
-    const currentClientStake = this.breakdown[update.stakeholder] * update.currentPortfolioValue;
+    const currentClientStake = portfolio.breakdown[params.userId] * params.currentPortfolioValue;
 
     // If adding investment, add directly
     // If removing investment, ensure removal is not greater than existing investment
-    const adjustedCashUpdate = update.cashUpdate > 0 ? update.cashUpdate : Math.max(-1 * currentClientStake, update.cashUpdate);
+    const adjustedCashUpdate = params.cashUpdate > 0 ? params.cashUpdate : Math.max(-1 * currentClientStake, params.cashUpdate);
     const newClientStake = currentClientStake + adjustedCashUpdate;
 
-    const newTotalPortfolio = update.currentPortfolioValue + adjustedCashUpdate;
+    const newTotalPortfolio = params.currentPortfolioValue + adjustedCashUpdate;
 
     // Updating client portfolio fraction
     const updatedClientFraction = newClientStake / newTotalPortfolio;
-    this.breakdown[update.stakeholder] = updatedClientFraction;
+    portfolio.breakdown[params.userId] = updatedClientFraction;
 
-    for (const [ stakeholder, currentFraction ] of Object.entries(this.breakdown)) {
-      if (stakeholder === update.stakeholder) {
+    for (const [ stakeholder, currentFraction ] of Object.entries(portfolio.breakdown)) {
+      if (stakeholder === params.userId) {
         continue;
       }
 
-      const currentStake = update.currentPortfolioValue * currentFraction;
+      const currentStake = params.currentPortfolioValue * currentFraction;
       const newFraction = currentStake / newTotalPortfolio;
-      this.breakdown[stakeholder] = newFraction;
+      portfolio.breakdown[stakeholder] = newFraction;
     }
 
-    return this.getPortfolioBreakdown();
+    await this.portfolioModel.updateOne({
+      _id: params.portfolioId
+    }, {
+      $set: {
+        breakdown: portfolio.breakdown,
+      }
+    });
+
+    return getPortfolioBreakdown(portfolio.breakdown);
   }
 
   public getPortfolioBreakdown(): PortfolioStake[] {
