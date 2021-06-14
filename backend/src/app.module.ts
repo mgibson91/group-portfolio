@@ -3,6 +3,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { MongoService } from './mongo/mongo.service';
 
 @Module({
   imports: [
@@ -20,5 +21,6 @@ import { MongooseModule } from '@nestjs/mongoose';
     //   { name: UserModel.name, schema: UserSchema, collection: 'users' }
     // ])
   ],
+  providers: [MongoService],
 })
 export class AppModule {}

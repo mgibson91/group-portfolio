@@ -12,18 +12,7 @@
     "baseUrl": "./",
     "incremental": true,
     "paths": {
-      "@app/models": [
-        "libs/models/src"
-      ],
-      "@app/models/*": [
-        "libs/models/src/*"
-      ],
-      "@app/password": [
-        "libs/password/src"
-      ],
-      "@app/password/*": [
-        "libs/password/src/*"
-      ]
+      "@common/*": [ "./src/common/*" ]
     }
   }
 }
