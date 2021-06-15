@@ -1,26 +1,19 @@
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
-import { PortfolioModule } from './portfolio/portfolio.module';
-import { UserModule } from './user/user.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MongoService } from './mongo/mongo.service';
+import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     UserModule,
     PortfolioModule,
     GraphQLModule.forRoot({
       autoSchemaFile: true,
+      playground: true,
     }),
-    MongooseModule.forRoot('mongodb://localhost:37017', {
-      useNewUrlParser: true,
-      useFindAndModify: false,
-      useCreateIndex: true,
-    }),
-    // MongooseModule.forFeature([
-    //   { name: UserModel.name, schema: UserSchema, collection: 'users' }
-    // ])
   ],
-  providers: [MongoService],
+  providers: [],
 })
 export class AppModule {}
