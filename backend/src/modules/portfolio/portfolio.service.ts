@@ -1,20 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import {
   InputAddSubscriberToPortfolio,
-  InputCreatePortfolio, InputPortfolioBreakdown,
-  PortfolioAdjustment,
+  InputAdjustPortfolio,
+  InputCreatePortfolio,
+  InputPortfolioBreakdown,
+  InputUpdatePortfolioValue,
+  PersonalStake,
   PortfolioStake,
 } from './portfolio.resolver';
-import { User } from '../user/types';
-import { CustomProviders } from '@common/nest-common';
-import { Collection, MongoClient } from 'mongodb';
-import { Collections } from '@common/collections';
 import { Model } from '../../index';
-import { v4 as uuid } from "uuid";
+import { PortfolioRepository } from './portfolio.repository';
+import { v4 as uuid } from 'uuid';
+import { UserRepository } from '../user/user.repository';
 
-
-function mapPortfolioBreakdown(breakdown: Record<string, number>): PortfolioStake[] {
-  return Object.entries(breakdown).map(([stakeholder, fraction]) => ({ stakeholder, percentage: fraction * 100 }));
+function mapPortfolioBreakdown(portfolio: Model.Portfolio.Store): PortfolioStake[] {
+  return Object.entries(portfolio?.breakdown).map(([stakeholder, fraction]) => {
+    const percentage = fraction * 100;
+    return {
+      stakeholder,
+      percentage,
+      value: portfolio.value * fraction,
+    }
+  });
 }
 
 export function mapStoreToPublicPortfolio(model: Model.Portfolio.Store): Model.Portfolio.Public {
@@ -23,59 +30,58 @@ export function mapStoreToPublicPortfolio(model: Model.Portfolio.Store): Model.P
     createdBy: model.createdBy,
     name: model.name,
     description: model.description,
+    value: model.value,
     breakdown: model.breakdown,
   };
 }
 
 @Injectable()
 export class PortfolioService {
-  private userCollection: Collection<Model.User.Store>;
-  private portfolioCollection: Collection<Model.Portfolio.Store>;
-  private portfolioSubscriberCollection: Collection<Model.PortfolioSubscriber.Store>;
+  constructor(
+    private portfolioRepo: PortfolioRepository,
+    private userRepo: UserRepository,
+  ) {
 
-  // private breakdown: Record<string, number> = {};
-
-  constructor(@Inject(CustomProviders.MONGO_CLIENT) private mongoClient: MongoClient) {
-    this.userCollection = this.mongoClient.db().collection<Model.User.Store>(Collections.User);
-    this.portfolioCollection = this.mongoClient.db().collection<Model.Portfolio.Store>(Collections.Portfolio);
-    this.portfolioSubscriberCollection = this.mongoClient.db().collection<Model.PortfolioSubscriber.Store>(Collections.PortfolioSubscriber);
   }
 
-  public async createPortfolio(params: InputCreatePortfolio, requestingUser: User): Promise<Model.Portfolio.Public> {
-    const result = await this.portfolioCollection.insertOne({ ...params, _id: uuid(), createdBy: requestingUser.id, breakdown: {} });
-    const found = await this.portfolioCollection.findOne({ _id: result.insertedId })
-
-    return mapStoreToPublicPortfolio(found);
+  private async verifyPortfolioCreatedByUser(portfolio: Model.Portfolio.Store, user: Model.User.Public) {
+    if (portfolio?.createdBy !== user.id) {
+      console.error({ portfolioId: portfolio._id, requestingUserId: user.id }, 'Portfolio can only be updated by the user who created it')
+      throw new UnauthorizedException('Portfolio can only be updated by the user who created it')
+    }
   }
 
-  public async addSubscriberToPortfolio(params: InputAddSubscriberToPortfolio, requestingUser: User): Promise<void> {
-    const portfolio = await this.portfolioCollection.findOne({ _id: params.portfolioId });
-    if (!portfolio) {
-      throw new Error('Portfolio does not exist');
-    }
+  // private async getPersonalPortfolios(userId: string) {
+  //   const subscriptionsCursor = await this.portfolioSubscriberCollection.find({ userId });
+  //   const subscriptions = await subscriptionsCursor.toArray();
+  //   const portfolioIds = subscriptions.map(p => p.portfolioId);
+  //
+  //   const portfoliosCursor = await this.portfolioCollection.find({ _id: { $in: portfolioIds }});
+  //   const portfolios = await portfoliosCursor.toArray();
+  //
+  //   return portfolios;
+  // }
 
-    if (portfolio?.createdBy !== requestingUser.id) {
-      throw new Error('Portfolio can only be updated by the user who created it')
-    }
-
-    const user = await this.userCollection.findOne({ _id: params.userId });
-    if (!user) {
-      throw new Error('User does not exist');
-    }
-
-    const subscription = await this.portfolioSubscriberCollection.insertOne(params);
+  async createPortfolio(params: InputCreatePortfolio, requestingUser: Model.User.Public): Promise<Model.Portfolio.Public> {
+    const portfolio = await this.portfolioRepo.create({ ...params, _id: uuid(), createdBy: requestingUser.id, value: 0, breakdown: {} });
+    return mapStoreToPublicPortfolio(portfolio);
   }
 
-  public async adjustPortfolio(params: PortfolioAdjustment, requestingUser: User) {
-    const portfolio = await this.portfolioCollection.findOne({ _id: params.portfolioId });
-    if (!portfolio) {
-      throw new Error('Portfolio does not exist');
-    }
+  async addSubscriberToPortfolio(params: InputAddSubscriberToPortfolio, requestingUser: Model.User.Public): Promise<void> {
+    const portfolio = await this.portfolioRepo.getExistingPortfolio(params.portfolioId);
+    await this.verifyPortfolioCreatedByUser(portfolio, requestingUser);
 
-    if (portfolio?.createdBy !== requestingUser.id) {
-      console.error({ portfolioId: portfolio._id, requestingUserId: requestingUser.id }, 'Portfolio can only be updated by the user who created it')
-      throw new Error('Portfolio can only be updated by the user who created it')
-    }
+    const user = await this.userRepo.getExistingUser(params.userId);
+
+    await this.portfolioRepo.addSubscriberToPortfolio({
+      portfolioId: portfolio._id,
+      userId: user._id,
+    });
+  }
+
+  async adjustPortfolio(params: InputAdjustPortfolio, requestingUser: Model.User.Public) {
+    const portfolio = await this.portfolioRepo.getExistingPortfolio(params.portfolioId);
+    await this.verifyPortfolioCreatedByUser(portfolio, requestingUser);
 
     if (!portfolio.breakdown) {
       portfolio.breakdown = {};
@@ -109,29 +115,43 @@ export class PortfolioService {
         continue;
       }
 
-      const currentStake = params.currentPortfolioValue * currentFraction;
+      const currentStake = params.currentPortfolioValue * (currentFraction as number);
       const newFraction = currentStake / newTotalPortfolio;
       portfolio.breakdown[stakeholder] = newFraction;
     }
 
-    await this.portfolioCollection.updateOne({
-      _id: params.portfolioId
-    }, {
-      $set: {
-        breakdown: portfolio.breakdown,
-      }
-    });
+    await this.portfolioRepo.updateBreakdown(portfolio._id, portfolio.breakdown);
 
-    return mapPortfolioBreakdown(portfolio.breakdown);
+    return mapPortfolioBreakdown(portfolio);
   }
 
-  public async getPortfolioBreakdown(params: InputPortfolioBreakdown, requestingUser: User) {
-    const portfolio = await this.portfolioCollection.findOne({ _id: params.portfolioId });
-    if (portfolio?.createdBy !== requestingUser?.id) {
-      console.error({ portfolioId: portfolio._id, requestingUserId: requestingUser?.id }, 'Portfolio can only be updated by the user who created it')
-      throw new Error('Portfolio can only be queried by the user who created it')
+  async getPortfolioBreakdown(params: InputPortfolioBreakdown, requestingUser: Model.User.Public) {
+    const portfolio = await this.portfolioRepo.getExistingPortfolio(params.portfolioId);
+    await this.verifyPortfolioCreatedByUser(portfolio, requestingUser);
+
+    return mapPortfolioBreakdown(portfolio);
+  }
+
+  async getPersonalBreakdown(requestingUser: Model.User.Public) {
+    const portfolios = await this.portfolioRepo.getPersonalPortfolios(requestingUser.id);
+
+    const result: PersonalStake[] = [];
+
+    for (const portfolio of portfolios) {
+      const percentage = portfolio.breakdown?.[requestingUser.id];
+      if (percentage) {
+        result.push({ percentage, portfolio: mapStoreToPublicPortfolio(portfolio) })
+      }
     }
 
-    return mapPortfolioBreakdown(portfolio?.breakdown);
+    return result;
+  }
+
+  async updateValue(params: InputUpdatePortfolioValue, requestingUser: Model.User.Public) {
+    const portfolio = await this.portfolioRepo.getExistingPortfolio(params.portfolioId);
+    await this.verifyPortfolioCreatedByUser(portfolio, requestingUser);
+
+    const updated = await this.portfolioRepo.updateValue(params);
+    return mapPortfolioBreakdown(updated);
   }
 }

@@ -9,28 +9,28 @@ import { CorrelationId } from '@common/correlation-id.decorator';
 @ObjectType()
 export class Session {
   @Field(() => GraphQLString)
-  access_token: string;
+  access_token!: string;
 }
 
 @InputType()
 export class InputLoginCredentials {
   @Field(() => GraphQLString)
-  email: string;
+  email!: string;
 
   @Field(() => GraphQLString)
-  password: string;
+  password!: string;
 }
 
 @InputType()
 export class InputRegister {
   @Field(() => GraphQLString)
-  email: string;
+  email!: string;
 
   @Field(() => GraphQLString)
-  username: string;
+  username!: string;
 
   @Field(() => GraphQLString)
-  password: string;
+  password!: string;
 }
 
 @Resolver()

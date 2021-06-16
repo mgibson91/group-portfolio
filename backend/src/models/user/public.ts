@@ -1,5 +1,5 @@
 export class UserPublicModel {
-  id: string;
-  email: string;
-  username: string;
+  id!: string;
+  email!: string;
+  username!: string;
 }

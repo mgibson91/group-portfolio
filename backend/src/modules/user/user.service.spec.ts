@@ -39,7 +39,7 @@ describe('UserService', () => {
       username: 'username',
     })
 
-    const found = await service.findUserByEmail(result.email);
+    const found = await service.findExistingUserByEmail(result.email);
 
     expect(result.email).toEqual(found.email);
   })

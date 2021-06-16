@@ -17,7 +17,7 @@ export const MONGO_PROVIDER: Provider = {
         // console.log('Connecting to Mongo');
         mongoClient = await MongoClient.connect(
           // In testing, jest.global.setup.ts overwrites MONGO_URI to point to mongodb-memory-server
-          process.env.MONGO_URI,
+          process.env.MONGO_URI as string,
           {
             useUnifiedTopology: true,
           },

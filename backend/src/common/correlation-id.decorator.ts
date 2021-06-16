@@ -2,7 +2,7 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { v4 as uuid } from "uuid";
 
-export const CorrelationId = createParamDecorator((data: unknown, context: ExecutionContext) => {
+export const CorrelationId = createParamDecorator((data: unknown, context: ExecutionContext): string => {
   try {
     const req = context.switchToHttp().getRequest();
     if (req) {
